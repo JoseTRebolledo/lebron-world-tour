@@ -16,7 +16,7 @@ const fetchProfile = async (userId) => {
   if (!supabase || !userId) return null;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, email, role')
+    .select('id, email, role, password_set')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -47,10 +47,20 @@ export function AuthProvider({ children }) {
     }
     try {
       const data = await fetchProfile(userId);
-      setProfile(data || { id: userId, email: null, role: 'member' });
+      setProfile(data || {
+        id: userId,
+        email: null,
+        role: 'member',
+        password_set: false,
+      });
     } catch (error) {
       setAuthError(error.message);
-      setProfile({ id: userId, email: null, role: 'member' });
+      setProfile({
+        id: userId,
+        email: null,
+        role: 'member',
+        password_set: false,
+      });
     }
   }, []);
 
@@ -150,6 +160,24 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const setPassword = useCallback(async (password) => {
+    if (!supabase) {
+      throw new Error('Supabase no está configurado. Completa el archivo .env');
+    }
+    setAuthError(null);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+      setAuthError(updateError.message);
+      throw updateError;
+    }
+    const { error: markError } = await supabase.rpc('mark_password_set');
+    if (markError) {
+      setAuthError(markError.message);
+      throw markError;
+    }
+    await loadProfile(session?.user?.id);
+  }, [loadProfile, session?.user?.id]);
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     setAuthError(null);
@@ -161,26 +189,32 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }, []);
 
+  const needsPassword = Boolean(session?.user) && profile != null && !profile.password_set;
+
   const value = useMemo(() => ({
     session,
     user: session?.user || null,
     profile,
     role: profile?.role || 'member',
     isAdmin: profile?.role === 'admin',
+    needsPassword,
     loading,
     authError,
     configured: isSupabaseConfigured,
     createAccountWithMagicLink,
     signInWithPassword,
+    setPassword,
     signOut,
     refreshProfile: () => loadProfile(session?.user?.id),
   }), [
     session,
     profile,
+    needsPassword,
     loading,
     authError,
     createAccountWithMagicLink,
     signInWithPassword,
+    setPassword,
     signOut,
     loadProfile,
   ]);

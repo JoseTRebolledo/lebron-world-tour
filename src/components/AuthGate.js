@@ -49,12 +49,115 @@ const primaryBtnSx = {
   '&:hover': { bgcolor: '#ffe08a' },
 };
 
+function BrandTitle() {
+  return (
+    <Typography
+      variant="h3"
+      sx={{
+        fontFamily: '"Bebas Neue", "Oswald", Impact, sans-serif',
+        letterSpacing: 2,
+        color: '#FDB927',
+        lineHeight: 1,
+        fontSize: { xs: '2.2rem', sm: '3rem' },
+      }}
+    >
+      LeBron World Tour
+    </Typography>
+  );
+}
+
+function SetPasswordForm() {
+  const { setPassword, authError, signOut } = useAuth();
+  const [password, setPasswordValue] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLocalError(null);
+    if (password.length < 8) {
+      setLocalError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (password !== confirm) {
+      setLocalError('Las contraseñas no coinciden');
+      return;
+    }
+    setSaving(true);
+    try {
+      await setPassword(password);
+    } catch (error) {
+      setLocalError(error.message || 'No se pudo guardar la contraseña');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Box sx={shellSx}>
+      <Stack component="form" onSubmit={handleSubmit} spacing={2} sx={cardSx}>
+        <BrandTitle />
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
+          Cuenta creada. Elegí una contraseña para entrar la próxima vez sin magic link.
+        </Typography>
+        <TextField
+          label="Contraseña"
+          type="password"
+          required
+          fullWidth
+          value={password}
+          onChange={(event) => setPasswordValue(event.target.value)}
+          disabled={saving}
+          InputLabelProps={labelProps}
+          sx={fieldSx}
+          autoComplete="new-password"
+        />
+        <TextField
+          label="Confirmar contraseña"
+          type="password"
+          required
+          fullWidth
+          value={confirm}
+          onChange={(event) => setConfirm(event.target.value)}
+          disabled={saving}
+          InputLabelProps={labelProps}
+          sx={fieldSx}
+          autoComplete="new-password"
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={saving || !password || !confirm}
+          sx={primaryBtnSx}
+        >
+          {saving ? 'Guardando…' : 'Guardar contraseña'}
+        </Button>
+        {(localError || authError) && (
+          <Typography variant="body2" sx={{ color: '#ff8a80' }}>
+            {localError || authError}
+          </Typography>
+        )}
+        <Button
+          type="button"
+          onClick={() => signOut()}
+          sx={{ color: 'rgba(255,255,255,0.65)', textTransform: 'none' }}
+        >
+          Cerrar sesión
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 export function AuthGate({ children }) {
   const {
     user,
     loading,
     configured,
     authError,
+    needsPassword,
     signInWithPassword,
     createAccountWithMagicLink,
   } = useAuth();
@@ -87,6 +190,10 @@ export function AuthGate({ children }) {
     );
   }
 
+  if (user && needsPassword) {
+    return <SetPasswordForm />;
+  }
+
   if (user) {
     return children;
   }
@@ -115,22 +222,11 @@ export function AuthGate({ children }) {
   return (
     <Box sx={shellSx}>
       <Stack component="form" onSubmit={handleSubmit} spacing={2} sx={cardSx}>
-        <Typography
-          variant="h3"
-          sx={{
-            fontFamily: '"Bebas Neue", "Oswald", Impact, sans-serif',
-            letterSpacing: 2,
-            color: '#FDB927',
-            lineHeight: 1,
-            fontSize: { xs: '2.2rem', sm: '3rem' },
-          }}
-        >
-          LeBron World Tour
-        </Typography>
+        <BrandTitle />
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
           {mode === 'login'
             ? 'Entrá con email y contraseña. Si te compartieron un viaje, abrí ese enlace después de iniciar sesión.'
-            : 'Te enviamos un magic link para crear la cuenta. La contraseña la configura el admin.'}
+            : 'Te enviamos un magic link para crear la cuenta. Después elegís tu contraseña en la app.'}
         </Typography>
 
         <ToggleButtonGroup
@@ -234,7 +330,8 @@ export function AuthGate({ children }) {
 
         {sent && (
           <Typography variant="body2" sx={{ color: '#81c784' }}>
-            Listo. Abrí el enlace del email en este mismo navegador.
+            Listo. Abrí el enlace del email en este mismo navegador; después vas a elegir
+            tu contraseña.
           </Typography>
         )}
       </Stack>
