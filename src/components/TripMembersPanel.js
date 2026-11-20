@@ -63,10 +63,10 @@ export function TripMembersPanel({
       }
       if (window.navigator?.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(url);
-      } else {
-        window.prompt('Copia este enlace:', url);
+        if (onInfo) onInfo('Link de invitación copiado');
+      } else if (onInfo) {
+        onInfo('Copia el enlace mostrado abajo');
       }
-      if (onInfo) onInfo('Link de invitación copiado');
     } catch (error) {
       if (onError) onError(error.message || 'No se pudo copiar el link');
     } finally {

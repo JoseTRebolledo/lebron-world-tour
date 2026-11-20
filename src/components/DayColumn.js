@@ -23,6 +23,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { ActivityCard } from './ActivityCard';
+import { PromptDialog } from './PromptDialog';
 import {
   IMAGE_POSITIONS,
   LEBRON_SEASONS,
@@ -48,6 +49,7 @@ export function DayColumn({
   });
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [imageBroken, setImageBroken] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
 
   // Clear sticky error state when the URL changes (e.g. "Restaurar fotos").
   useEffect(() => {
@@ -184,10 +186,7 @@ export function DayColumn({
           <Box
             component="button"
             type="button"
-            onClick={() => {
-              const next = window.prompt('Nombre del día', day.label);
-              if (next && next.trim()) onRenameDay(day.id, next.trim());
-            }}
+            onClick={() => setRenameOpen(true)}
             sx={{
               border: 0,
               background: 'transparent',
@@ -256,6 +255,19 @@ export function DayColumn({
           Agregar actividad
         </Button>
       </Box>
+
+      <PromptDialog
+        open={renameOpen}
+        title="Renombrar día"
+        label="Nombre del día"
+        initialValue={day.label}
+        confirmLabel="Guardar"
+        onCancel={() => setRenameOpen(false)}
+        onConfirm={(next) => {
+          onRenameDay(day.id, next);
+          setRenameOpen(false);
+        }}
+      />
     </Paper>
   );
 }

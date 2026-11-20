@@ -20,6 +20,7 @@ import { CostDashboard } from './components/CostDashboard';
 import { AddActivityDialog } from './components/AddActivityDialog';
 import { TripHome } from './components/TripHome';
 import { TripMembersPanel } from './components/TripMembersPanel';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { buildEmptyItinerary, buildSeedItinerary } from './helpers/seedItinerary';
 import {
   DEFAULT_IMAGE_POSITION,
@@ -105,6 +106,7 @@ function TripBoardView({ tripId, onBackToTrips }) {
 
   const [activeActivity, setActiveActivity] = useState(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, type: null });
   const [dialogState, setDialogState] = useState({
     open: false,
     dayId: null,
@@ -389,17 +391,27 @@ function TripBoardView({ tripId, onBackToTrips }) {
   };
 
   const handleClearActivities = () => {
-    if (window.confirm('¿Vaciar todas las actividades? Se mantienen los días para que puedas armar tu plan.')) {
-      setBoard(buildEmptyItinerary(meta));
-      addAlert({ id: 'lebron-clear-ok', severity: 'info', message: 'Actividades vaciadas' });
-    }
+    setConfirmState({ open: true, type: 'clear' });
   };
 
   const handleReset = () => {
-    if (window.confirm('¿Restablecer el itinerario al viaje demo de Japón?')) {
+    setConfirmState({ open: true, type: 'reset' });
+  };
+
+  const handleConfirmClose = () => {
+    setConfirmState({ open: false, type: null });
+  };
+
+  const handleConfirmAction = () => {
+    if (confirmState.type === 'clear') {
+      setBoard(buildEmptyItinerary(meta));
+      addAlert({ id: 'lebron-clear-ok', severity: 'info', message: 'Actividades vaciadas' });
+    }
+    if (confirmState.type === 'reset') {
       setBoard(buildSeedItinerary());
       addAlert({ id: 'lebron-reset-ok', severity: 'info', message: 'Itinerario reiniciado' });
     }
+    handleConfirmClose();
   };
 
   const handleSignOut = async () => {
@@ -515,6 +527,18 @@ function TripBoardView({ tripId, onBackToTrips }) {
         onDisableShare={disableSharing}
         onError={onError}
         onInfo={onInfo}
+      />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.type === 'reset' ? 'Restablecer itinerario' : 'Vaciar actividades'}
+        message={confirmState.type === 'reset'
+          ? '¿Restablecer el itinerario al viaje demo de Japón?'
+          : '¿Vaciar todas las actividades? Se mantienen los días para que puedas armar tu plan.'}
+        confirmLabel={confirmState.type === 'reset' ? 'Restablecer' : 'Vaciar'}
+        danger={confirmState.type === 'clear'}
+        onCancel={handleConfirmClose}
+        onConfirm={handleConfirmAction}
       />
     </Box>
   );

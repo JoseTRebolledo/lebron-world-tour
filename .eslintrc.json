@@ -10,7 +10,6 @@
     "react/no-unstable-nested-components": "off",
     "react/jsx-props-no-spreading": "off",
     "react/jsx-no-useless-fragment": "off",
-    "no-alert": "off",
     "import/no-extraneous-dependencies": ["error", {
       "devDependencies": [
         "**/*.test.js",
