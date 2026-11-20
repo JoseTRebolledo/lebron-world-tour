@@ -6,13 +6,21 @@
 2. SQL Editor → run in order:
    - `supabase/migrations/001_trips.sql`
    - `supabase/migrations/002_profiles_members.sql`
+   - `supabase/migrations/003_table_grants.sql` (fixes `permission denied for table trips`)
 3. Promote yourself to **admin** (only admins can create trips):
 
 ```sql
 update public.profiles
 set role = 'admin'
 where email = 'you@example.com';
+
+select id, email, role from public.profiles;
 ```
+
+If create-trip fails with RLS on `trips`:
+- run `004_fix_trips_insert_rls.sql`
+- run `005_fix_trips_select_returning.sql` (fixes RETURNING/select after insert)
+- confirm your profile row shows `role = admin`
 
 4. Authentication → URL Configuration → Redirect URLs:
    - `http://localhost:3011`

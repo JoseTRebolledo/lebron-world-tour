@@ -131,7 +131,7 @@ export function AddActivityDialog({
             type="number"
             inputProps={{ min: 0, step: '0.01' }}
             fullWidth
-            helperText="Dejá 0 o vacío si es gratis"
+            helperText="Deja 0 o vacío si es gratis"
           />
           <TextField
             select

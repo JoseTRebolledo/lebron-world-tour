@@ -389,14 +389,14 @@ function TripBoardView({ tripId, onBackToTrips }) {
   };
 
   const handleClearActivities = () => {
-    if (window.confirm('¿Vaciar todas las actividades? Se mantienen los días para que armes tu plan.')) {
+    if (window.confirm('¿Vaciar todas las actividades? Se mantienen los días para que puedas armar tu plan.')) {
       setBoard(buildEmptyItinerary(meta));
       addAlert({ id: 'lebron-clear-ok', severity: 'info', message: 'Actividades vaciadas' });
     }
   };
 
   const handleReset = () => {
-    if (window.confirm('¿Resetear el itinerario al viaje demo de Japón?')) {
+    if (window.confirm('¿Restablecer el itinerario al viaje demo de Japón?')) {
       setBoard(buildSeedItinerary());
       addAlert({ id: 'lebron-reset-ok', severity: 'info', message: 'Itinerario reiniciado' });
     }
@@ -529,7 +529,7 @@ function LeBronWorldTourApp() {
   const { addAlert } = useSnackBars();
   const { user } = useAuth();
   const [selectedTripId, setSelectedTripId] = useState(null);
-  const [joining, setJoining] = useState(Boolean(getShareTokenFromUrl()));
+  const [joining, setJoining] = useState(false);
 
   const onError = useCallback((message) => {
     addAlert({ id: `home-error-${Date.now()}`, severity: 'error', message });
@@ -547,6 +547,13 @@ function LeBronWorldTourApp() {
       return undefined;
     }
 
+    const joinTimeout = window.setTimeout(() => {
+      if (cancelled) return;
+      setJoining(false);
+      clearShareFromUrl();
+      onError('Tiempo de espera agotado al unirse al viaje');
+    }, 10000);
+
     const join = async () => {
       setJoining(true);
       try {
@@ -555,7 +562,7 @@ function LeBronWorldTourApp() {
         });
         if (error) throw error;
         const row = Array.isArray(data) ? data[0] : data;
-        if (!row?.id) throw new Error('Invite link inválido o desactivado');
+        if (!row?.id) throw new Error('Enlace de invitación inválido o desactivado');
         if (cancelled) return;
         clearShareFromUrl();
         setSelectedTripId(row.id);
@@ -570,6 +577,7 @@ function LeBronWorldTourApp() {
           clearShareFromUrl();
         }
       } finally {
+        window.clearTimeout(joinTimeout);
         if (!cancelled) setJoining(false);
       }
     };
@@ -577,6 +585,7 @@ function LeBronWorldTourApp() {
     join();
     return () => {
       cancelled = true;
+      window.clearTimeout(joinTimeout);
     };
   }, [user?.id, addAlert, onError]);
 

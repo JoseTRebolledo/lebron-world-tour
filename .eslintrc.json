@@ -10,7 +10,15 @@
     "react/no-unstable-nested-components": "off",
     "react/jsx-props-no-spreading": "off",
     "react/jsx-no-useless-fragment": "off",
-    "no-alert": "warn"
+    "no-alert": "warn",
+    "import/no-extraneous-dependencies": ["error", {
+      "devDependencies": [
+        "**/*.test.js",
+        "**/*.spec.js",
+        "**/craco.config.js"
+      ],
+      "packageDir": "."
+    }]
   },
   "globals": {
     "localStorage": true,
@@ -20,5 +28,13 @@
   },
   "parserOptions": {
     "ecmaVersion": 2020
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "paths": ["src"],
+        "extensions": [".js", ".jsx"]
+      }
+    }
   }
 }

@@ -129,7 +129,7 @@ const useTripBoard = ({
           .maybeSingle();
 
         if (memberError) throw memberError;
-        if (!membership) throw new Error('No sos miembro de este viaje');
+        if (!membership) throw new Error('No eres miembro de este viaje');
 
         const nextBoard = normalizeBoard(trip.board_json);
         setBoardState(nextBoard);

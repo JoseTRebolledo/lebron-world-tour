@@ -46,21 +46,17 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
     setCreating(true);
     try {
       const seed = buildSeedItinerary();
-      const { data, error } = await supabase
-        .from('trips')
-        .insert({
-          owner_id: user.id,
-          title: 'LeBron World Tour',
-          board_json: seed,
-          share_mode: 'off',
-        })
-        .select('id, title, updated_at, owner_id, share_mode')
-        .single();
+      const { data, error } = await supabase.rpc('create_trip', {
+        p_title: 'LeBron World Tour',
+        p_board_json: seed,
+      });
       if (error) throw error;
+      const trip = Array.isArray(data) ? data[0] : data;
+      if (!trip?.id) throw new Error('No se pudo crear el viaje');
       if (onInfo) onInfo('Viaje creado');
-      onOpenTrip(data.id);
+      onOpenTrip(trip.id);
     } catch (error) {
-      if (onError) onError(error.message || 'No se pudo crear el viaje (¿sos admin?)');
+      if (onError) onError(error.message || 'No se pudo crear el viaje');
     } finally {
       setCreating(false);
     }
@@ -105,7 +101,7 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
               {user?.email}
-              {isAdmin ? ' · admin (podés crear viajes)' : ' · miembro'}
+              {isAdmin ? ' · admin (puedes crear viajes)' : ' · miembro'}
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -146,8 +142,8 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
         {!loading && trips.length === 0 ? (
           <Typography sx={{ color: 'rgba(255,255,255,0.6)', py: 4 }}>
             {isAdmin
-              ? 'Todavía no tenés viajes. Creá uno para empezar.'
-              : 'Todavía no sos miembro de ningún viaje. Pedile al admin el link de invitación.'}
+              ? 'Aún no tienes viajes. Crea uno para empezar.'
+              : 'Aún no eres miembro de ningún viaje. Pídele al admin el enlace de invitación.'}
           </Typography>
         ) : null}
 
@@ -178,7 +174,7 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
                   Actualizado
                   {' '}
                   {trip.updated_at ? new Date(trip.updated_at).toLocaleString() : '—'}
-                  {trip.owner_id === user?.id ? ' · sos owner' : ''}
+                  {trip.owner_id === user?.id ? ' · eres owner' : ''}
                 </Typography>
               </Box>
             ))}

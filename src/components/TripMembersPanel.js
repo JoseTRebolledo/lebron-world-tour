@@ -64,7 +64,7 @@ export function TripMembersPanel({
       if (window.navigator?.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(url);
       } else {
-        window.prompt('Copiá este link:', url);
+        window.prompt('Copia este enlace:', url);
       }
       if (onInfo) onInfo('Link de invitación copiado');
     } catch (error) {
@@ -95,10 +95,10 @@ export function TripMembersPanel({
         p_user_id: userId,
       });
       if (error) throw error;
-      if (onInfo) onInfo('Miembro removido');
+      if (onInfo) onInfo('Miembro eliminado');
       await loadMembers();
     } catch (error) {
-      if (onError) onError(error.message || 'No se pudo remover al miembro');
+      if (onError) onError(error.message || 'No se pudo eliminar al miembro');
     } finally {
       setBusy(false);
     }
@@ -139,7 +139,8 @@ export function TripMembersPanel({
                 Link de invitación
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mb: 1.5 }}>
-                Solo vos (owner) podés generar este link. Quien lo abra logueado se une como editor.
+                Solo el propietario (owner) puede generar este enlace. Quien lo abra con sesión
+                iniciada se une como editor.
               </Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <Button
@@ -220,7 +221,7 @@ export function TripMembersPanel({
                         size="small"
                         onClick={() => removeMember(member.user_id)}
                         disabled={busy}
-                        aria-label="Remover"
+                        aria-label="Eliminar"
                         sx={{ color: '#ff8a80' }}
                       >
                         <PersonRemoveIcon fontSize="small" />

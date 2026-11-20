@@ -23,6 +23,17 @@ const fetchProfile = async (userId) => {
   return data;
 };
 
+/** Clear expired/invalid OTP hash so the app does not stay on an error URL. */
+const clearAuthErrorHash = () => {
+  try {
+    const { hash } = window.location;
+    if (!hash || !hash.includes('error=')) return;
+    window.history.replaceState({}, '', window.location.pathname + window.location.search);
+  } catch (error) {
+    // ignore
+  }
+};
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -50,41 +61,64 @@ export function AuthProvider({ children }) {
     }
 
     let mounted = true;
+    clearAuthErrorHash();
 
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      if (!mounted) return;
-      if (error) setAuthError(error.message);
-      const nextSession = data.session || null;
-      setSession(nextSession);
-      if (nextSession?.user?.id) {
-        await loadProfile(nextSession.user.id);
-      } else {
-        setProfile(null);
-      }
+    const finishLoading = () => {
       if (mounted) setLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, nextSession) => {
+    // Safety: never spin forever if Supabase hangs.
+    const loadingTimeout = window.setTimeout(finishLoading, 8000);
+
+    supabase.auth.getSession()
+      .then(async ({ data, error }) => {
+        if (!mounted) return;
+        if (error) setAuthError(error.message);
+        const nextSession = data.session || null;
         setSession(nextSession);
         if (nextSession?.user?.id) {
           await loadProfile(nextSession.user.id);
         } else {
           setProfile(null);
         }
-        setLoading(false);
+      })
+      .catch((error) => {
+        if (mounted) setAuthError(error.message || 'Error de autenticación');
+      })
+      .finally(() => {
+        window.clearTimeout(loadingTimeout);
+        finishLoading();
+      });
+
+    // Do not make this callback async — awaiting inside onAuthStateChange
+    // can deadlock with getSession in supabase-js.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, nextSession) => {
+        setSession(nextSession);
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          finishLoading();
+          return;
+        }
+        if (nextSession?.user?.id) {
+          loadProfile(nextSession.user.id).finally(finishLoading);
+        } else {
+          setProfile(null);
+          finishLoading();
+        }
       },
     );
 
     return () => {
       mounted = false;
+      window.clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, [loadProfile]);
 
   const signInWithEmail = useCallback(async (email) => {
     if (!supabase) {
-      throw new Error('Supabase no está configurado. Completá el archivo .env');
+      throw new Error('Supabase no está configurado. Completa el archivo .env');
     }
     setAuthError(null);
     const { error } = await supabase.auth.signInWithOtp({

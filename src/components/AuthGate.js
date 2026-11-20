@@ -36,7 +36,12 @@ export function AuthGate({ children }) {
           px: 2,
         }}
       >
-        <CircularProgress color="inherit" />
+        <Stack spacing={1.5} alignItems="center">
+          <CircularProgress color="inherit" />
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>
+            Cargando sesión…
+          </Typography>
+        </Stack>
       </Box>
     );
   }
@@ -96,8 +101,8 @@ export function AuthGate({ children }) {
           LeBron World Tour
         </Typography>
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
-          Entrá con tu email. Te mandamos un magic link. Si te compartieron un viaje, abrí ese link
-          después de iniciar sesión.
+          Inicia sesión con tu email. Te enviaremos un magic link. Si te compartieron un viaje,
+          abre ese enlace después de iniciar sesión.
         </Typography>
 
         {!configured && (
@@ -150,7 +155,7 @@ export function AuthGate({ children }) {
         >
           {(() => {
             if (sending) return 'Enviando…';
-            if (sent) return 'Revisá tu email';
+            if (sent) return 'Revisa tu email';
             return 'Enviar magic link';
           })()}
         </Button>
@@ -163,7 +168,7 @@ export function AuthGate({ children }) {
 
         {sent && (
           <Typography variant="body2" sx={{ color: '#81c784' }}>
-            Listo. Abrí el link del email en este mismo navegador.
+            Listo. Abre el enlace del email en este mismo navegador.
           </Typography>
         )}
       </Stack>
