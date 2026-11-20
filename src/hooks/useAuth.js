@@ -80,10 +80,24 @@ export function AuthProvider({ children }) {
     // Safety: never spin forever if Supabase hangs.
     const loadingTimeout = window.setTimeout(finishLoading, 8000);
 
+    const isRefreshFailure = (message) => /refresh token|invalid.*jwt|session.*expired/i.test(
+      String(message || ''),
+    );
+
     supabase.auth.getSession()
       .then(async ({ data, error }) => {
         if (!mounted) return;
-        if (error) setAuthError(error.message);
+        if (error) {
+          const message = isRefreshFailure(error.message)
+            ? 'Tu sesión expiró o fue invalidada. Vuelve a iniciar sesión.'
+            : error.message;
+          setAuthError(message);
+          // Stale refresh tokens leave the UI half-logged-in; clear local session only.
+          await supabase.auth.signOut({ scope: 'local' });
+          setSession(null);
+          setProfile(null);
+          return;
+        }
         const nextSession = data.session || null;
         setSession(nextSession);
         if (nextSession?.user?.id) {
@@ -92,8 +106,19 @@ export function AuthProvider({ children }) {
           setProfile(null);
         }
       })
-      .catch((error) => {
-        if (mounted) setAuthError(error.message || 'Error de autenticación');
+      .catch(async (error) => {
+        if (!mounted) return;
+        const message = isRefreshFailure(error.message)
+          ? 'Tu sesión expiró o fue invalidada. Vuelve a iniciar sesión.'
+          : (error.message || 'Error de autenticación');
+        setAuthError(message);
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch (signOutError) {
+          // ignore
+        }
+        setSession(null);
+        setProfile(null);
       })
       .finally(() => {
         window.clearTimeout(loadingTimeout);
@@ -105,10 +130,13 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, nextSession) => {
         setSession(nextSession);
-        if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT' || !nextSession) {
           setProfile(null);
           finishLoading();
           return;
+        }
+        if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          setAuthError(null);
         }
         if (nextSession?.user?.id) {
           loadProfile(nextSession.user.id).finally(finishLoading);
@@ -162,7 +190,9 @@ export function AuthProvider({ children }) {
       throw new Error('Supabase no está configurado. Completa el archivo .env');
     }
     setAuthError(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    // Drop any stale local tokens before login (common after a failed refresh on mobile).
+    await supabase.auth.signOut({ scope: 'local' });
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -170,7 +200,13 @@ export function AuthProvider({ children }) {
       setAuthError(error.message);
       throw error;
     }
-  }, []);
+    if (!data.session?.user?.id) {
+      const missing = new Error('Login OK pero sin sesión. Revisa Confirm email / sesiones en Supabase.');
+      setAuthError(missing.message);
+      throw missing;
+    }
+    await loadProfile(data.session.user.id);
+  }, [loadProfile]);
 
   const setPassword = useCallback(async (password) => {
     if (!supabase) {
@@ -193,11 +229,13 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     setAuthError(null);
-    const { error } = await supabase.auth.signOut();
+    // Local only: do not revoke sessions on other devices (phone vs computer).
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) {
       setAuthError(error.message);
       throw error;
     }
+    setSession(null);
     setProfile(null);
   }, []);
 
