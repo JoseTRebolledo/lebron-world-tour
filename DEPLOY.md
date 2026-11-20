@@ -36,7 +36,7 @@ If create-trip fails with RLS on `trips`:
 | `profiles.role = admin` | Yes | As trip owner, via invite link |
 | `profiles.role = member` | No | Only join via owner invite link |
 
-Invite link = `/?share=<share_token>` where `share_token` is a random UUID stored on the trip. Only the trip **owner** can generate/revoke it. Recipients must be logged in; opening the link joins them as **editor**.
+Invite link = `/?share=<share_token>`. Only app **admins** can generate/revoke it. Links expire after **30 minutes** (`share_token_expires_at`). Recipients must be logged in; opening the link joins them as **editor**. Run migration `007_share_token_expiry.sql`.
 
 ## 2. Local env
 

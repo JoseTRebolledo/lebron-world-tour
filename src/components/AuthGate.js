@@ -99,7 +99,7 @@ function SetPasswordForm() {
       <Stack component="form" onSubmit={handleSubmit} spacing={2} sx={cardSx}>
         <BrandTitle />
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
-          Cuenta creada. Elegí una contraseña para entrar la próxima vez sin magic link.
+          Cuenta creada. Elige una contraseña para entrar la próxima vez sin magic link.
         </Typography>
         <TextField
           label="Contraseña"
@@ -225,8 +225,8 @@ export function AuthGate({ children }) {
         <BrandTitle />
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
           {mode === 'login'
-            ? 'Entrá con email y contraseña. Si te compartieron un viaje, abrí ese enlace después de iniciar sesión.'
-            : 'Te enviamos un magic link para crear la cuenta. Después elegís tu contraseña en la app.'}
+            ? 'Inicia sesión con email y contraseña. Si te compartieron un viaje, abre ese enlace después de iniciar sesión.'
+            : 'Te enviamos un magic link para crear la cuenta. Después eliges tu contraseña en la app.'}
         </Typography>
 
         <ToggleButtonGroup
@@ -330,8 +330,8 @@ export function AuthGate({ children }) {
 
         {sent && (
           <Typography variant="body2" sx={{ color: '#81c784' }}>
-            Listo. Abrí el enlace del email en este mismo navegador; después vas a elegir
-            tu contraseña.
+            Listo. Abre el enlace del email en este mismo navegador; después eliges tu
+            contraseña.
           </Typography>
         )}
       </Stack>

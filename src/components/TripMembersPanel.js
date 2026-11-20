@@ -24,7 +24,9 @@ export function TripMembersPanel({
   onClose,
   tripId,
   isOwner,
+  isAdmin,
   shareUrl,
+  shareExpiresAt,
   onEnableShare,
   onDisableShare,
   onError,
@@ -57,15 +59,13 @@ export function TripMembersPanel({
   const copyShare = async () => {
     setBusy(true);
     try {
-      let url = shareUrl;
-      if (!url) {
-        url = await onEnableShare();
-      }
+      // Always mint a fresh token so the 30-minute window restarts.
+      const url = await onEnableShare();
       if (window.navigator?.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(url);
-        if (onInfo) onInfo('Link de invitación copiado');
+        if (onInfo) onInfo('Link de invitación copiado (válido 30 minutos)');
       } else if (onInfo) {
-        onInfo('Copia el enlace mostrado abajo');
+        onInfo('Copia el enlace mostrado abajo (válido 30 minutos)');
       }
     } catch (error) {
       if (onError) onError(error.message || 'No se pudo copiar el link');
@@ -73,6 +73,14 @@ export function TripMembersPanel({
       setBusy(false);
     }
   };
+
+  const expiryLabel = (() => {
+    if (!shareExpiresAt) return null;
+    const ms = new Date(shareExpiresAt).getTime() - Date.now();
+    if (ms <= 0) return 'Expirado';
+    const mins = Math.max(1, Math.ceil(ms / 60000));
+    return `Expira en ~${mins} min`;
+  })();
 
   const revokeShare = async () => {
     setBusy(true);
@@ -133,14 +141,14 @@ export function TripMembersPanel({
       </DialogTitle>
       <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <Stack spacing={2.5}>
-          {isOwner && (
+          {isAdmin && (
             <Box>
               <Typography variant="subtitle2" sx={{ color: '#FDB927', mb: 1, fontWeight: 700 }}>
                 Link de invitación
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mb: 1.5 }}>
-                Solo el propietario (owner) puede generar este enlace. Quien lo abra con sesión
-                iniciada se une como editor.
+                Solo un admin puede generar este enlace. Caduca a los 30 minutos. Quien lo abra
+                con sesión iniciada se une como editor.
               </Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <Button
@@ -156,7 +164,7 @@ export function TripMembersPanel({
                     '&:hover': { bgcolor: '#ffe08a' },
                   }}
                 >
-                  {shareUrl ? 'Copiar link' : 'Generar y copiar link'}
+                  {shareUrl ? 'Renovar y copiar link' : 'Generar y copiar link'}
                 </Button>
                 {shareUrl && (
                   <Button
@@ -171,17 +179,27 @@ export function TripMembersPanel({
                 )}
               </Stack>
               {shareUrl && (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    display: 'block',
-                    mt: 1,
-                    color: 'rgba(255,255,255,0.45)',
-                    wordBreak: 'break-all',
-                  }}
-                >
-                  {shareUrl}
-                </Typography>
+                <>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      mt: 1,
+                      color: 'rgba(255,255,255,0.45)',
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {shareUrl}
+                  </Typography>
+                  {expiryLabel && (
+                    <Typography
+                      variant="caption"
+                      sx={{ display: 'block', mt: 0.5, color: '#FDB927' }}
+                    >
+                      {expiryLabel}
+                    </Typography>
+                  )}
+                </>
               )}
             </Box>
           )}
@@ -248,7 +266,9 @@ TripMembersPanel.propTypes = {
   onClose: PropTypes.func.isRequired,
   tripId: PropTypes.string,
   isOwner: PropTypes.bool,
+  isAdmin: PropTypes.bool,
   shareUrl: PropTypes.string,
+  shareExpiresAt: PropTypes.string,
   onEnableShare: PropTypes.func.isRequired,
   onDisableShare: PropTypes.func.isRequired,
   onError: PropTypes.func,
@@ -258,7 +278,9 @@ TripMembersPanel.propTypes = {
 TripMembersPanel.defaultProps = {
   tripId: null,
   isOwner: false,
+  isAdmin: false,
   shareUrl: null,
+  shareExpiresAt: null,
   onError: null,
   onInfo: null,
 };

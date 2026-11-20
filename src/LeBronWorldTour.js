@@ -79,7 +79,7 @@ const clearShareFromUrl = () => {
 
 function TripBoardView({ tripId, onBackToTrips }) {
   const { addAlert } = useSnackBars();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
 
   const onError = useCallback((message) => {
     addAlert({ id: `trip-error-${Date.now()}`, severity: 'error', message });
@@ -96,11 +96,13 @@ function TripBoardView({ tripId, onBackToTrips }) {
     saving,
     isOwner,
     shareUrl,
+    shareExpiresAt,
     enableSharing,
     disableSharing,
   } = useTripBoard({
     userId: user?.id || null,
     tripId,
+    canManageShare: isAdmin,
     onError,
   });
 
@@ -391,10 +393,12 @@ function TripBoardView({ tripId, onBackToTrips }) {
   };
 
   const handleClearActivities = () => {
+    if (!isAdmin) return;
     setConfirmState({ open: true, type: 'clear' });
   };
 
   const handleReset = () => {
+    if (!isAdmin) return;
     setConfirmState({ open: true, type: 'reset' });
   };
 
@@ -403,6 +407,10 @@ function TripBoardView({ tripId, onBackToTrips }) {
   };
 
   const handleConfirmAction = () => {
+    if (!isAdmin) {
+      handleConfirmClose();
+      return;
+    }
     if (confirmState.type === 'clear') {
       setBoard(buildEmptyItinerary(meta));
       addAlert({ id: 'lebron-clear-ok', severity: 'info', message: 'Actividades vaciadas' });
@@ -459,6 +467,7 @@ function TripBoardView({ tripId, onBackToTrips }) {
             onOpenMembers={() => setMembersOpen(true)}
             onBackToTrips={onBackToTrips}
             isOwner={isOwner}
+            isAdmin={isAdmin}
             saving={saving}
           />
           <Stack
@@ -522,7 +531,9 @@ function TripBoardView({ tripId, onBackToTrips }) {
         onClose={() => setMembersOpen(false)}
         tripId={tripId}
         isOwner={isOwner}
+        isAdmin={isAdmin}
         shareUrl={shareUrl}
+        shareExpiresAt={shareExpiresAt}
         onEnableShare={enableSharing}
         onDisableShare={disableSharing}
         onError={onError}

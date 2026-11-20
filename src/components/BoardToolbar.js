@@ -41,6 +41,7 @@ export function BoardToolbar({
   onOpenMembers,
   onBackToTrips,
   isOwner,
+  isAdmin,
   saving,
 }) {
   const theme = useTheme();
@@ -62,19 +63,21 @@ export function BoardToolbar({
       icon: <BrokenImageOutlinedIcon fontSize="small" />,
       onClick: onResetAllDayImages,
     },
-    {
-      key: 'clear',
-      label: 'Vaciar actividades',
-      icon: <DeleteSweepIcon fontSize="small" />,
-      onClick: onClearActivities,
-      danger: true,
-    },
-    {
-      key: 'reset',
-      label: 'Reset',
-      icon: <RestartAltIcon fontSize="small" />,
-      onClick: onReset,
-    },
+    ...(isAdmin ? [
+      {
+        key: 'clear',
+        label: 'Vaciar actividades',
+        icon: <DeleteSweepIcon fontSize="small" />,
+        onClick: onClearActivities,
+        danger: true,
+      },
+      {
+        key: 'reset',
+        label: 'Reset',
+        icon: <RestartAltIcon fontSize="small" />,
+        onClick: onReset,
+      },
+    ] : []),
   ];
 
   return (
@@ -271,6 +274,7 @@ BoardToolbar.propTypes = {
   onOpenMembers: PropTypes.func,
   onBackToTrips: PropTypes.func,
   isOwner: PropTypes.bool,
+  isAdmin: PropTypes.bool,
   saving: PropTypes.bool,
 };
 
@@ -281,6 +285,7 @@ BoardToolbar.defaultProps = {
   onOpenMembers: null,
   onBackToTrips: null,
   isOwner: false,
+  isAdmin: false,
   saving: false,
 };
 

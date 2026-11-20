@@ -39,12 +39,14 @@ const writeLocalCache = (tripId, board) => {
 const useTripBoard = ({
   userId,
   tripId,
+  canManageShare = false,
   onError,
 } = {}) => {
   const [board, setBoardState] = useState(emptyBoard);
   const [memberRole, setMemberRole] = useState(null);
   const [shareMode, setShareMode] = useState('off');
   const [activeShareToken, setActiveShareToken] = useState(null);
+  const [shareExpiresAt, setShareExpiresAt] = useState(null);
   const [loading, setLoading] = useState(Boolean(tripId));
   const [saving, setSaving] = useState(false);
 
@@ -114,7 +116,7 @@ const useTripBoard = ({
       try {
         const { data: trip, error } = await supabase
           .from('trips')
-          .select('id, board_json, share_token, share_mode, updated_at')
+          .select('id, board_json, share_token, share_mode, share_token_expires_at, updated_at')
           .eq('id', tripId)
           .single();
 
@@ -135,8 +137,18 @@ const useTripBoard = ({
         setBoardState(nextBoard);
         latestBoard.current = nextBoard;
         setMemberRole(membership.role);
-        setShareMode(trip.share_mode || 'off');
-        setActiveShareToken(trip.share_token || null);
+
+        const expiresAt = trip.share_token_expires_at || null;
+        const expired = expiresAt ? new Date(expiresAt).getTime() <= Date.now() : false;
+        if (expired || !trip.share_token || trip.share_mode === 'off') {
+          setShareMode('off');
+          setActiveShareToken(null);
+          setShareExpiresAt(null);
+        } else {
+          setShareMode(trip.share_mode || 'off');
+          setActiveShareToken(trip.share_token || null);
+          setShareExpiresAt(expiresAt);
+        }
         writeLocalCache(tripId, nextBoard);
       } catch (error) {
         if (cancelled) return;
@@ -162,8 +174,8 @@ const useTripBoard = ({
   }, [tripId, userId, onError]);
 
   const enableSharing = useCallback(async () => {
-    if (!supabase || !tripIdRef.current || !isOwner) {
-      throw new Error('Solo el owner puede generar el link de invitación');
+    if (!supabase || !tripIdRef.current || !canManageShare) {
+      throw new Error('Solo un admin puede generar el link de invitación');
     }
     const { data, error } = await supabase.rpc('set_trip_share_token', {
       p_trip_id: tripIdRef.current,
@@ -173,12 +185,13 @@ const useTripBoard = ({
     const row = Array.isArray(data) ? data[0] : data;
     setActiveShareToken(row.share_token);
     setShareMode(row.share_mode);
+    setShareExpiresAt(row.share_token_expires_at || null);
     return `${window.location.origin}/?share=${row.share_token}`;
-  }, [isOwner]);
+  }, [canManageShare]);
 
   const disableSharing = useCallback(async () => {
-    if (!supabase || !tripIdRef.current || !isOwner) {
-      throw new Error('Solo el owner puede revocar el link');
+    if (!supabase || !tripIdRef.current || !canManageShare) {
+      throw new Error('Solo un admin puede revocar el link');
     }
     const { error } = await supabase.rpc('set_trip_share_token', {
       p_trip_id: tripIdRef.current,
@@ -187,9 +200,13 @@ const useTripBoard = ({
     if (error) throw error;
     setActiveShareToken(null);
     setShareMode('off');
-  }, [isOwner]);
+    setShareExpiresAt(null);
+  }, [canManageShare]);
 
-  const shareUrl = (activeShareToken && shareMode !== 'off')
+  const shareExpired = Boolean(
+    shareExpiresAt && new Date(shareExpiresAt).getTime() <= Date.now(),
+  );
+  const shareUrl = (activeShareToken && shareMode !== 'off' && !shareExpired)
     ? `${window.location.origin}/?share=${activeShareToken}`
     : null;
 
@@ -203,6 +220,7 @@ const useTripBoard = ({
     memberRole,
     shareMode,
     shareUrl,
+    shareExpiresAt: shareUrl ? shareExpiresAt : null,
     enableSharing,
     disableSharing,
     tripId,
