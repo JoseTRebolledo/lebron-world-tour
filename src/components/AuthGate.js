@@ -1,0 +1,178 @@
+/* eslint-disable import/prefer-default-export */
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import useAuth from '../hooks/useAuth';
+
+export function AuthGate({ children }) {
+  const {
+    user,
+    loading,
+    configured,
+    authError,
+    signInWithEmail,
+  } = useAuth();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          bgcolor: '#0b0b0b',
+          color: '#FDB927',
+          px: 2,
+        }}
+      >
+        <CircularProgress color="inherit" />
+      </Box>
+    );
+  }
+
+  if (user) {
+    return children;
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLocalError(null);
+    setSending(true);
+    try {
+      await signInWithEmail(email);
+      setSent(true);
+    } catch (error) {
+      setLocalError(error.message || 'No se pudo enviar el magic link');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        px: { xs: 1.5, sm: 2 },
+        py: 2,
+        background:
+          'radial-gradient(ellipse at 10% 0%, rgba(85,37,131,0.55), transparent 50%), radial-gradient(ellipse at 90% 10%, rgba(253,185,39,0.2), transparent 45%), linear-gradient(160deg, #0b0b0b 0%, #161016 55%, #0b0b0b 100%)',
+      }}
+    >
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        spacing={2}
+        sx={{
+          width: '100%',
+          maxWidth: 420,
+          p: { xs: 2, sm: 3 },
+          border: '1px solid rgba(253,185,39,0.35)',
+          bgcolor: 'rgba(26,26,26,0.9)',
+        }}
+      >
+        <Typography
+          variant="h3"
+          sx={{
+            fontFamily: '"Bebas Neue", "Oswald", Impact, sans-serif',
+            letterSpacing: 2,
+            color: '#FDB927',
+            lineHeight: 1,
+            fontSize: { xs: '2.2rem', sm: '3rem' },
+          }}
+        >
+          LeBron World Tour
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
+          Entrá con tu email. Te mandamos un magic link. Si te compartieron un viaje, abrí ese link
+          después de iniciar sesión.
+        </Typography>
+
+        {!configured && (
+          <Typography variant="body2" sx={{ color: '#ff8a80' }}>
+            Falta configurar
+            {' '}
+            <code>REACT_APP_SUPABASE_URL</code>
+            {' '}
+            y
+            {' '}
+            <code>REACT_APP_SUPABASE_ANON_KEY</code>
+            {' '}
+            en
+            {' '}
+            <code>.env</code>
+            .
+          </Typography>
+        )}
+
+        <TextField
+          label="Email"
+          type="email"
+          required
+          fullWidth
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={!configured || sending || sent}
+          InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.6)' } }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              color: '#fff',
+              minHeight: 44,
+              '& fieldset': { borderColor: 'rgba(253,185,39,0.4)' },
+            },
+          }}
+        />
+
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={!configured || sending || sent || !email.trim()}
+          sx={{
+            bgcolor: '#FDB927',
+            color: '#111',
+            fontWeight: 700,
+            minHeight: 44,
+            '&:hover': { bgcolor: '#ffe08a' },
+          }}
+        >
+          {(() => {
+            if (sending) return 'Enviando…';
+            if (sent) return 'Revisá tu email';
+            return 'Enviar magic link';
+          })()}
+        </Button>
+
+        {(localError || authError) && (
+          <Typography variant="body2" sx={{ color: '#ff8a80' }}>
+            {localError || authError}
+          </Typography>
+        )}
+
+        {sent && (
+          <Typography variant="body2" sx={{ color: '#81c784' }}>
+            Listo. Abrí el link del email en este mismo navegador.
+          </Typography>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+AuthGate.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+export default AuthGate;

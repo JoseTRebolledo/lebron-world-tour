@@ -1,0 +1,24 @@
+{
+  "extends": ["airbnb"],
+  "rules": {
+    "import/no-cycle": "off",
+    "object-curly-newline": "off",
+    "react/jsx-one-expression-per-line": "off",
+    "jsx-a11y/anchor-is-valid": 0,
+    "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
+    "react/function-component-definition": "off",
+    "react/no-unstable-nested-components": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react/jsx-no-useless-fragment": "off",
+    "no-alert": "warn"
+  },
+  "globals": {
+    "localStorage": true,
+    "document": true,
+    "window": true,
+    "fetch": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020
+  }
+}

@@ -1,0 +1,203 @@
+/* eslint-disable import/prefer-default-export */
+import React, { useCallback, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Stack,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { supabase } from '../lib/supabase';
+import { buildSeedItinerary } from '../helpers/seedItinerary';
+import useAuth from '../hooks/useAuth';
+
+export function TripHome({ onOpenTrip, onError, onInfo }) {
+  const { user, isAdmin, signOut } = useAuth();
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+
+  const loadTrips = useCallback(async () => {
+    if (!supabase || !user?.id) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('id, title, updated_at, owner_id, share_mode')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      setTrips(data || []);
+    } catch (error) {
+      if (onError) onError(error.message || 'No se pudieron cargar los viajes');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, onError]);
+
+  useEffect(() => {
+    loadTrips();
+  }, [loadTrips]);
+
+  const handleCreate = async () => {
+    if (!supabase || !user?.id || !isAdmin) return;
+    setCreating(true);
+    try {
+      const seed = buildSeedItinerary();
+      const { data, error } = await supabase
+        .from('trips')
+        .insert({
+          owner_id: user.id,
+          title: 'LeBron World Tour',
+          board_json: seed,
+          share_mode: 'off',
+        })
+        .select('id, title, updated_at, owner_id, share_mode')
+        .single();
+      if (error) throw error;
+      if (onInfo) onInfo('Viaje creado');
+      onOpenTrip(data.id);
+    } catch (error) {
+      if (onError) onError(error.message || 'No se pudo crear el viaje (¿sos admin?)');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      if (onError) onError(error.message || 'No se pudo cerrar sesión');
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        px: { xs: 1.5, sm: 3 },
+        py: { xs: 2, md: 3 },
+        background:
+          'radial-gradient(ellipse at 10% 0%, rgba(85,37,131,0.55), transparent 50%), radial-gradient(ellipse at 90% 10%, rgba(253,185,39,0.2), transparent 45%), linear-gradient(160deg, #0b0b0b 0%, #161016 55%, #0b0b0b 100%)',
+      }}
+    >
+      <Stack spacing={2.5} sx={{ maxWidth: 720, mx: 'auto' }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Stack spacing={0.5}>
+            <Typography
+              sx={{
+                fontFamily: '"Bebas Neue", "Oswald", Impact, sans-serif',
+                letterSpacing: 2,
+                color: '#FDB927',
+                fontSize: { xs: '2.2rem', sm: '3rem' },
+                lineHeight: 1,
+              }}
+            >
+              Tus viajes
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+              {user?.email}
+              {isAdmin ? ' · admin (podés crear viajes)' : ' · miembro'}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {isAdmin && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreate}
+                disabled={creating}
+                sx={{
+                  bgcolor: '#FDB927',
+                  color: '#111',
+                  fontWeight: 700,
+                  minHeight: 40,
+                  '&:hover': { bgcolor: '#ffe08a' },
+                }}
+              >
+                {creating ? 'Creando…' : 'Crear viaje'}
+              </Button>
+            )}
+            <Button
+              variant="text"
+              startIcon={<LogoutIcon />}
+              onClick={handleSignOut}
+              sx={{ color: 'rgba(255,255,255,0.7)', minHeight: 40 }}
+            >
+              Salir
+            </Button>
+          </Stack>
+        </Stack>
+
+        {loading ? (
+          <Box sx={{ display: 'grid', placeItems: 'center', py: 8 }}>
+            <CircularProgress sx={{ color: '#FDB927' }} />
+          </Box>
+        ) : null}
+
+        {!loading && trips.length === 0 ? (
+          <Typography sx={{ color: 'rgba(255,255,255,0.6)', py: 4 }}>
+            {isAdmin
+              ? 'Todavía no tenés viajes. Creá uno para empezar.'
+              : 'Todavía no sos miembro de ningún viaje. Pedile al admin el link de invitación.'}
+          </Typography>
+        ) : null}
+
+        {!loading && trips.length > 0 ? (
+          <Stack spacing={1.25}>
+            {trips.map((trip) => (
+              <Box
+                key={trip.id}
+                component="button"
+                type="button"
+                onClick={() => onOpenTrip(trip.id)}
+                sx={{
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(253,185,39,0.3)',
+                  bgcolor: 'rgba(255,255,255,0.04)',
+                  color: '#fff',
+                  p: { xs: 1.5, sm: 2 },
+                  minHeight: 56,
+                  font: 'inherit',
+                  '&:hover': { bgcolor: 'rgba(253,185,39,0.12)' },
+                }}
+              >
+                <Typography fontWeight={700} sx={{ color: '#FDB927' }}>
+                  {trip.title || 'LeBron World Tour'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+                  Actualizado
+                  {' '}
+                  {trip.updated_at ? new Date(trip.updated_at).toLocaleString() : '—'}
+                  {trip.owner_id === user?.id ? ' · sos owner' : ''}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        ) : null}
+      </Stack>
+    </Box>
+  );
+}
+
+TripHome.propTypes = {
+  onOpenTrip: PropTypes.func.isRequired,
+  onError: PropTypes.func,
+  onInfo: PropTypes.func,
+};
+
+TripHome.defaultProps = {
+  onError: null,
+  onInfo: null,
+};
+
+export default TripHome;
