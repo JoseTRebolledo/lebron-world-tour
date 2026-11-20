@@ -13,6 +13,10 @@ import {
 } from '@mui/material';
 import useAuth from '../hooks/useAuth';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isValidEmail = (value) => EMAIL_RE.test(String(value || '').trim());
+
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
     color: '#fff',
@@ -99,7 +103,7 @@ function SetPasswordForm() {
       <Stack component="form" onSubmit={handleSubmit} spacing={2} sx={cardSx}>
         <BrandTitle />
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
-          Cuenta creada. Elige una contraseña para entrar la próxima vez sin magic link.
+          Elige una contraseña para entrar la próxima vez.
         </Typography>
         <TextField
           label="Contraseña"
@@ -159,13 +163,13 @@ export function AuthGate({ children }) {
     authError,
     needsPassword,
     signInWithPassword,
-    createAccountWithMagicLink,
+    signUpWithPassword,
   } = useAuth();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [localError, setLocalError] = useState(null);
 
   if (loading) {
@@ -201,18 +205,35 @@ export function AuthGate({ children }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLocalError(null);
+
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      setLocalError('Introduce un email válido');
+      return;
+    }
+
+    if (mode === 'signup') {
+      if (password.length < 8) {
+        setLocalError('La contraseña debe tener al menos 8 caracteres');
+        return;
+      }
+      if (password !== confirm) {
+        setLocalError('Las contraseñas no coinciden');
+        return;
+      }
+    }
+
     setSending(true);
     try {
       if (mode === 'login') {
-        await signInWithPassword(email, password);
+        await signInWithPassword(trimmedEmail, password);
       } else {
-        await createAccountWithMagicLink(email);
-        setSent(true);
+        await signUpWithPassword(trimmedEmail, password);
       }
     } catch (error) {
       setLocalError(
         error.message
-          || (mode === 'login' ? 'No se pudo iniciar sesión' : 'No se pudo enviar el magic link'),
+          || (mode === 'login' ? 'No se pudo iniciar sesión' : 'No se pudo crear la cuenta'),
       );
     } finally {
       setSending(false);
@@ -226,7 +247,7 @@ export function AuthGate({ children }) {
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
           {mode === 'login'
             ? 'Inicia sesión con email y contraseña. Si te compartieron un viaje, abre ese enlace después de iniciar sesión.'
-            : 'Te enviamos un magic link para crear la cuenta. Después eliges tu contraseña en la app.'}
+            : 'Crea una cuenta con email y contraseña.'}
         </Typography>
 
         <ToggleButtonGroup
@@ -238,7 +259,7 @@ export function AuthGate({ children }) {
             if (!value) return;
             setMode(value);
             setLocalError(null);
-            setSent(false);
+            setConfirm('');
           }}
           sx={{
             '& .MuiToggleButton-root': {
@@ -281,24 +302,42 @@ export function AuthGate({ children }) {
           fullWidth
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          disabled={!configured || sending || sent}
+          disabled={!configured || sending}
           InputLabelProps={labelProps}
           sx={fieldSx}
           autoComplete="email"
+          error={Boolean(email.trim()) && !isValidEmail(email)}
+          helperText={
+            email.trim() && !isValidEmail(email) ? 'Email no válido' : undefined
+          }
+          FormHelperTextProps={{ sx: { color: '#ff8a80' } }}
         />
 
-        {mode === 'login' && (
+        <TextField
+          label="Contraseña"
+          type="password"
+          required
+          fullWidth
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          disabled={!configured || sending}
+          InputLabelProps={labelProps}
+          sx={fieldSx}
+          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+        />
+
+        {mode === 'signup' && (
           <TextField
-            label="Contraseña"
+            label="Confirmar contraseña"
             type="password"
             required
             fullWidth
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
             disabled={!configured || sending}
             InputLabelProps={labelProps}
             sx={fieldSx}
-            autoComplete="current-password"
+            autoComplete="new-password"
           />
         )}
 
@@ -309,29 +348,22 @@ export function AuthGate({ children }) {
           disabled={
             !configured
             || sending
-            || sent
             || !email.trim()
-            || (mode === 'login' && !password)
+            || !isValidEmail(email)
+            || !password
+            || (mode === 'signup' && !confirm)
           }
           sx={primaryBtnSx}
         >
           {(() => {
-            if (sending) return mode === 'login' ? 'Entrando…' : 'Enviando…';
-            if (sent) return 'Revisa tu email';
-            return mode === 'login' ? 'Entrar' : 'Enviar magic link';
+            if (sending) return mode === 'login' ? 'Entrando…' : 'Creando…';
+            return mode === 'login' ? 'Entrar' : 'Crear cuenta';
           })()}
         </Button>
 
         {(localError || authError) && (
           <Typography variant="body2" sx={{ color: '#ff8a80' }}>
             {localError || authError}
-          </Typography>
-        )}
-
-        {sent && (
-          <Typography variant="body2" sx={{ color: '#81c784' }}>
-            Listo. Abre el enlace del email en este mismo navegador; después eliges tu
-            contraseña.
           </Typography>
         )}
       </Stack>

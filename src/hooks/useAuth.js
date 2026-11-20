@@ -126,24 +126,36 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
-  /** Magic link only for creating an account. */
-  const createAccountWithMagicLink = useCallback(async (email) => {
+  /** Create account with email + password (no magic link / email confirmation). */
+  const signUpWithPassword = useCallback(async (email, password) => {
     if (!supabase) {
       throw new Error('Supabase no está configurado. Completa el archivo .env');
     }
     setAuthError(null);
-    const { error } = await supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
-      options: {
-        emailRedirectTo: window.location.origin,
-        shouldCreateUser: true,
-      },
+      password,
     });
     if (error) {
       setAuthError(error.message);
       throw error;
     }
-  }, []);
+    // With "Confirm email" disabled in Supabase, signup returns a session.
+    if (data.session?.user?.id) {
+      const { error: markError } = await supabase.rpc('mark_password_set');
+      if (markError) {
+        setAuthError(markError.message);
+        throw markError;
+      }
+      await loadProfile(data.session.user.id);
+      return;
+    }
+    const pending = new Error(
+      'Cuenta creada, pero falta sesión. En Supabase → Authentication → Providers → Email, desactiva "Confirm email".',
+    );
+    setAuthError(pending.message);
+    throw pending;
+  }, [loadProfile]);
 
   const signInWithPassword = useCallback(async (email, password) => {
     if (!supabase) {
@@ -201,7 +213,7 @@ export function AuthProvider({ children }) {
     loading,
     authError,
     configured: isSupabaseConfigured,
-    createAccountWithMagicLink,
+    signUpWithPassword,
     signInWithPassword,
     setPassword,
     signOut,
@@ -212,7 +224,7 @@ export function AuthProvider({ children }) {
     needsPassword,
     loading,
     authError,
-    createAccountWithMagicLink,
+    signUpWithPassword,
     signInWithPassword,
     setPassword,
     signOut,
