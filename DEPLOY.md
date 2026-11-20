@@ -62,4 +62,8 @@ Never commit `.env`. Never put the **service_role** key in the frontend.
 
 ## Auth note
 
-Magic links land on the app origin; the session is stored by `@supabase/supabase-js` in localStorage.
+- **Crear cuenta**: magic link (email). Then set the user password in Supabase Dashboard → Authentication → Users (do not write plaintext into SQL).
+- **Iniciar sesión**: email + password (no email sent).
+- In Supabase → Authentication → Providers → Email: leave Email enabled.
+- Magic links land on the app origin; the session is stored by `@supabase/supabase-js` in localStorage.
+- Built-in SMTP is ~2 emails/hour — use magic link sparingly (signup only), or configure custom SMTP.

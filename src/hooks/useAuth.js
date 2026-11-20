@@ -116,7 +116,8 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
-  const signInWithEmail = useCallback(async (email) => {
+  /** Magic link only for creating an account. */
+  const createAccountWithMagicLink = useCallback(async (email) => {
     if (!supabase) {
       throw new Error('Supabase no está configurado. Completa el archivo .env');
     }
@@ -125,7 +126,23 @@ export function AuthProvider({ children }) {
       email: email.trim(),
       options: {
         emailRedirectTo: window.location.origin,
+        shouldCreateUser: true,
       },
+    });
+    if (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+  }, []);
+
+  const signInWithPassword = useCallback(async (email, password) => {
+    if (!supabase) {
+      throw new Error('Supabase no está configurado. Completa el archivo .env');
+    }
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
     });
     if (error) {
       setAuthError(error.message);
@@ -153,10 +170,20 @@ export function AuthProvider({ children }) {
     loading,
     authError,
     configured: isSupabaseConfigured,
-    signInWithEmail,
+    createAccountWithMagicLink,
+    signInWithPassword,
     signOut,
     refreshProfile: () => loadProfile(session?.user?.id),
-  }), [session, profile, loading, authError, signInWithEmail, signOut, loadProfile]);
+  }), [
+    session,
+    profile,
+    loading,
+    authError,
+    createAccountWithMagicLink,
+    signInWithPassword,
+    signOut,
+    loadProfile,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
