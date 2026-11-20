@@ -14,25 +14,49 @@ import { supabase } from '../lib/supabase';
 import { buildSeedItinerary } from '../helpers/seedItinerary';
 import useAuth from '../hooks/useAuth';
 
+const TRIPS_FETCH_MS = 12000;
+
 export function TripHome({ onOpenTrip, onError, onInfo }) {
   const { user, isAdmin, signOut } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
 
   const loadTrips = useCallback(async () => {
-    if (!supabase || !user?.id) return;
+    if (!supabase || !user?.id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError(null);
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = window.setTimeout(() => {
+      if (controller) controller.abort();
+    }, TRIPS_FETCH_MS);
+
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('trips')
         .select('id, title, updated_at, owner_id, share_mode')
         .order('updated_at', { ascending: false });
+      if (controller) {
+        query = query.abortSignal(controller.signal);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       setTrips(data || []);
     } catch (error) {
-      if (onError) onError(error.message || 'No se pudieron cargar los viajes');
+      const aborted = error?.name === 'AbortError'
+        || /aborted|abort/i.test(String(error?.message || ''));
+      const message = aborted
+        ? 'La carga de viajes tardó demasiado. Revisa la conexión e inténtalo de nuevo.'
+        : (error.message || 'No se pudieron cargar los viajes');
+      setLoadError(message);
+      if (onError) onError(message);
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [user?.id, onError]);
@@ -139,7 +163,25 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
           </Box>
         ) : null}
 
-        {!loading && trips.length === 0 ? (
+        {!loading && loadError ? (
+          <Stack spacing={1.5} sx={{ py: 4 }}>
+            <Typography sx={{ color: '#ff8a80' }}>{loadError}</Typography>
+            <Button
+              variant="outlined"
+              onClick={loadTrips}
+              sx={{
+                alignSelf: 'flex-start',
+                color: '#FDB927',
+                borderColor: 'rgba(253,185,39,0.5)',
+                minHeight: 40,
+              }}
+            >
+              Reintentar
+            </Button>
+          </Stack>
+        ) : null}
+
+        {!loading && !loadError && trips.length === 0 ? (
           <Typography sx={{ color: 'rgba(255,255,255,0.6)', py: 4 }}>
             {isAdmin
               ? 'Aún no tienes viajes. Crea uno para empezar.'
@@ -147,7 +189,7 @@ export function TripHome({ onOpenTrip, onError, onInfo }) {
           </Typography>
         ) : null}
 
-        {!loading && trips.length > 0 ? (
+        {!loading && !loadError && trips.length > 0 ? (
           <Stack spacing={1.25}>
             {trips.map((trip) => (
               <Box

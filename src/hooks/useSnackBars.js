@@ -35,7 +35,14 @@ export const SnackBarsProvider = ({ children }) => {
       {children}
       <Stack
         spacing={1}
-        sx={{ position: 'fixed', top: 16, right: 16, zIndex: 1400, maxWidth: 360 }}
+        sx={{
+          position: 'fixed',
+          top: { xs: 12, sm: 16 },
+          left: { xs: 12, sm: 'auto' },
+          right: { xs: 12, sm: 16 },
+          zIndex: 1400,
+          maxWidth: { xs: 'calc(100vw - 24px)', sm: 360 },
+        }}
       >
         {alerts.map((alert) => (
           <Snackbar
